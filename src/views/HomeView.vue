@@ -1,6 +1,6 @@
 <template>
   <div class="vosk-client">
-    <h1>Vosk WebSocket Client</h1>
+    <h1>LUME-AR WebSocket Client</h1>
     <button @click="requestPermission">{{ isRecording ? "Остановить запись" : "Записать голос" }}</button>
     <p v-if="result"><strong>Распознанный текст:</strong> {{ result }}</p>
     <p v-if="error">
