@@ -6,11 +6,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Основной контент -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#80000000"
         android:orientation="vertical"
         android:padding="16dp">
 
@@ -22,14 +20,29 @@
             app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
             app:menu="@menu/main_menu" />
 
-        <TextView
-            android:id="@+id/textView"
+        <Spinner
+            android:id="@+id/dateSpinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Ожидание подключения..."
-            android:textSize="18sp"
+            android:textColor="@android:color/white" />
+
+        <ListView
+            android:id="@+id/listView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:textColor="@android:color/black" />
+
+        <Button
+            android:id="@+id/clearChatButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="#FF0000"
+            android:text="Удалить чат"
             android:textColor="@android:color/white"
-            android:textAlignment="center" />
+            android:textSize="16sp" />
+
     </LinearLayout>
 
     <!-- Боковая панель -->
@@ -39,6 +52,6 @@
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:background="#FFFF"
-    app:menu="@menu/drawer_menu"
-    app:itemTextColor="@android:color/black" />
+        app:menu="@menu/drawer_menu"
+        app:itemTextColor="@android:color/black" />
 </androidx.drawerlayout.widget.DrawerLayout>
