@@ -61,6 +61,7 @@
     <footer class="github-link animate__animated animate__fadeInUp animate__delay-1s">
       <a href="https://github.com/gaziza09/LUME-AR" target="_blank">Check out on GitHub</a>
     </footer>
+
   </div>
 </template>
 
