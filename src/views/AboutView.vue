@@ -21,7 +21,7 @@ export default {
   methods: {
     connectToProxy() {
       try {
-        this.proxyWs = new WebSocket("wss://10.8.16.162:8000/proxy");
+        this.proxyWs = new WebSocket("wss://easywork.kz/proxy");
         
         this.proxyWs.onopen = () => {
           console.log("Подключено к Proxy WebSocket.");
