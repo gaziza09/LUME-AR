@@ -1,8 +1,53 @@
 <template>
-  <div class="proxy-client">
-    <h1>Proxy WebSocket Client</h1>
-    <p v-if="proxyMessage"><strong>Сообщение от Proxy:</strong> {{ proxyMessage }}</p>
-    <p v-if="error" class="error">Ошибка: {{ error }}</p>
+  <div class="vosk-client">
+    <header class="animate__animated animate__fadeInDown">
+      <h1><span class="lume">Lume</span><span class="ar">Ar</span></h1>
+      <p class="subtitle">Анализ звуков природы</p>
+    </header>
+
+    <!-- Основной интерфейс -->
+    <div class="main-content">
+      <!-- Интерфейс записи -->
+      <div class="recording-section card animate__animated animate__fadeIn">
+        <div class="button-group">
+          <button @click="requestPermission" class="btn record" :class="{ recording: isRecording }">
+            {{ isRecording ? "Остановить запись" : "Начать запись" }}
+            <span class="mic-icon" :class="{ active: isRecording }">🎙️</span>
+          </button>
+          <button @click="goBack" class="btn secondary animate__animated animate__bounceIn">Назад</button>
+        </div>
+        <p v-if="error" class="error animate__animated animate__shakeX">{{ error }}</p>
+      </div>
+
+      <!-- Блок состояния -->
+      <div class="status-section card animate__animated animate__fadeIn">
+        <h2>Состояние</h2>
+        <p><strong>WebSocket (звуки):</strong> {{ wsStatus }}</p>
+        <p><strong>Микрофон:</strong> {{ micStatus }}</p>
+      </div>
+
+      <!-- История распознавания звуков -->
+      <div class="history-section card animate__animated animate__fadeIn">
+        <h2>История звуков</h2>
+        <ul v-if="natureSounds.length > 0" class="history-list">
+          <li v-for="(sound, index) in natureSounds" :key="index" class="history-item animate__animated animate__fadeInUp">
+            {{ sound.name }} (уверенность: {{ (sound.confidence * 100).toFixed(2) }}%)
+          </li>
+        </ul>
+        <p v-else class="no-history">Звуки не обнаружены</p>
+      </div>
+
+      <!-- О звуках природы -->
+      <div class="about-section card animate__animated animate__fadeIn">
+        <h2>О звуках природы</h2>
+        <p>LumeAr анализирует звуки окружающей среды и распознает природные звуки в реальном времени с помощью передовых технологий обработки аудио.</p>
+      </div>
+    </div>
+
+    <!-- Ссылка на GitHub -->
+    <footer class="github-link animate__animated animate__fadeInUp animate__delay-1s">
+      <a href="https://github.com/gaziza09/LUME-AR" target="_blank">Check out on GitHub</a>
+    </footer>
   </div>
 </template>
 
@@ -10,45 +55,140 @@
 export default {
   data() {
     return {
-      proxyWs: null,
-      proxyMessage: "",
+      wsSounds: null,
+      isRecording: false,
+      audioContext: null,
       error: null,
+      natureSounds: [],
+      wsStatus: "Отключен",
     };
   },
-  mounted() {
-    this.connectToProxy();
+  computed: {
+    micStatus() {
+      return this.isRecording ? "Активен" : "Неактивен";
+    },
   },
   methods: {
-    connectToProxy() {
+    goBack() {
+      this.$router.push("/");
+    },
+
+    async requestPermission() {
       try {
-        this.proxyWs = new WebSocket("wss://easywork.kz/proxy");
-        
-        this.proxyWs.onopen = () => {
-          console.log("Подключено к Proxy WebSocket.");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+        this.toggleRecording();
+      } catch (error) {
+        this.error = error.message;
+        console.error("Доступ к микрофону отклонён:", error);
+      }
+    },
+
+    toggleRecording() {
+      if (this.isRecording) {
+        this.stopRecording();
+      } else {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        this.startRecording();
+      }
+    },
+
+    async startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const input = this.audioContext.createMediaStreamSource(stream);
+        const processor = this.audioContext.createScriptProcessor(8192, 1, 1);
+
+        this.wsSounds = new WebSocket(`wss://easywork.kz/nature_sounds`);
+        this.wsSounds.binaryType = "arraybuffer";
+
+        this.wsSounds.onopen = () => {
+          this.wsStatus = "Подключен (звуки)";
+          console.log("WebSocket для звуков природы подключен");
         };
 
-        this.proxyWs.onmessage = (event) => {
+        this.wsSounds.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          if (data.message) {
-            this.proxyMessage = data.message;
-          } else if (data.text) {
-            this.proxyMessage = data.text;
-          } else {
-            this.proxyMessage = "Нет данных.";
+          if (data.predicted_class) {
+            this.natureSounds.unshift({
+              name: data.predicted_class,
+              confidence: 1.0,
+            });
+            if (this.natureSounds.length > 5) this.natureSounds.pop();
           }
         };
 
-        this.proxyWs.onerror = (error) => {
-          this.error = "Ошибка соединения с Proxy WebSocket.";
-          console.error("WebSocket Proxy Error:", error);
+        this.wsSounds.onerror = (error) => {
+          this.wsStatus = "Ошибка (звуки)";
+          console.error("Ошибка WebSocket звуков:", error);
         };
 
-        this.proxyWs.onclose = () => {
-          console.log("Соединение с Proxy WebSocket закрыто.");
+        this.wsSounds.onclose = () => {
+          this.wsStatus = "Отключен (звуки)";
+          console.log("WebSocket звуков закрыт.");
         };
+
+        const downsampleBuffer = (buffer, targetSampleRate, sourceSampleRate) => {
+          const ratio = sourceSampleRate / targetSampleRate;
+          const length = Math.round(buffer.length / ratio);
+          const result = new Int16Array(length);
+          let offset = 0;
+          let inputOffset = 0;
+
+          while (offset < result.length) {
+            const nextOffset = Math.round((offset + 1) * ratio);
+            let accumulator = 0;
+            let count = 0;
+
+            for (let i = inputOffset; i < nextOffset && i < buffer.length; i++) {
+              accumulator += buffer[i];
+              count++;
+            }
+
+            result[offset] = Math.min(1, accumulator / count) * 0x7FFF;
+            offset++;
+            inputOffset = nextOffset;
+          }
+
+          return result;
+        };
+
+        processor.onaudioprocess = (event) => {
+          const inputData = event.inputBuffer.getChannelData(0);
+          const downsampled = downsampleBuffer(inputData, 16000, this.audioContext.sampleRate);
+          const audioBuffer = downsampled.buffer;
+
+          if (this.wsSounds.readyState === WebSocket.OPEN) {
+            this.wsSounds.send(audioBuffer);
+          }
+        };
+
+        input.connect(processor);
+        processor.connect(this.audioContext.destination);
+
+        this.isRecording = true;
+        console.log("Запись началась...");
       } catch (error) {
-        this.error = "Не удалось подключиться к Proxy WebSocket.";
-        console.error(error);
+        console.error("Ошибка доступа к микрофону:", error);
+        this.error = error.message;
+      }
+    },
+
+    stopRecording() {
+      if (this.isRecording) {
+        if (this.wsSounds && this.wsSounds.readyState === WebSocket.OPEN) {
+          this.wsSounds.close();
+          console.log("WebSocket для звуков природы закрыт.");
+        }
+
+        if (this.audioContext) {
+          this.audioContext.close().then(() => {
+            console.log("Аудиоконтекст закрыт.");
+          });
+        }
+
+        this.isRecording = false;
+        console.log("Запись остановлена.");
       }
     },
   },
@@ -56,20 +196,5 @@ export default {
 </script>
 
 <style>
-.proxy-client {
-  max-width: 500px;
-  margin: 50px auto;
-  text-align: center;
-  font-family: Arial, sans-serif;
-}
-
-p {
-  margin-top: 20px;
-  font-size: 1.2em;
-}
-
-.error {
-  color: red;
-  font-size: 1em;
-}
+/* Стили остаются такими же, как в основном компоненте */
 </style>
