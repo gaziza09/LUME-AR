@@ -3,11 +3,14 @@ package com.example.lumeglasses;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.Button; // Добавлено
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Spinner;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.GravityCompat;
@@ -37,44 +40,45 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import java.io.IOException;
 
-public class HistoryActivity extends AppCompatActivity {
+public class HistoryActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
     private ListView listView;
     private Spinner dateSpinner;
     private WebSocket webSocket;
-    private DrawerLayout drawerLayout;
     private List<WordEntry> wordEntries = new ArrayList<>();
     private ArrayAdapter<String> listAdapter;
     private ArrayAdapter<String> spinnerAdapter;
     private Set<String> uniqueDates = new HashSet<>();
-    private Button clearChatButton; // Добавлено
+    private Button clearChatButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_history);
 
+        // Инициализация Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("История");
+        getSupportActionBar().setTitle(""); // Убираем заголовок
 
+        // Инициализация DrawerLayout и NavigationView
         drawerLayout = findViewById(R.id.drawer_layout);
-        NavigationView navigationView = findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int itemId = item.getItemId();
-            if (itemId == R.id.nav_home) {
-                Intent intent = new Intent(HistoryActivity.this, MainActivity.class);
-                startActivity(intent);
-            } else if (itemId == R.id.nav_history) {
-                // Уже на экране истории
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
+        navigationView = findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+
+        // Настройка ActionBarDrawerToggle
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawerLayout, toolbar,
+                R.string.navigation_drawer_open,
+                R.string.navigation_drawer_close);
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
 
         listView = findViewById(R.id.listView);
         dateSpinner = findViewById(R.id.dateSpinner);
-        clearChatButton = findViewById(R.id.clearChatButton); // Инициализация кнопки
+        clearChatButton = findViewById(R.id.clearChatButton);
 
         // Инициализация адаптеров
         listAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<String>()) {
@@ -108,6 +112,52 @@ public class HistoryActivity extends AppCompatActivity {
         clearChatButton.setOnClickListener(v -> clearChatHistory());
 
         connectWebSocket();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_menu) {
+            drawerLayout.openDrawer(GravityCompat.END);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.nav_home) {
+            // Переход на главную страницу
+            startActivity(new Intent(this, MainActivity.class));
+            finish();
+        } else if (id == R.id.nav_history) {
+            // Уже на странице истории
+        } else if (id == R.id.nav_health) {
+            // Переход на страницу мониторинга здоровья
+            startActivity(new Intent(this, HealthMonitorActivity.class));
+            finish();
+        } else if (id == R.id.nav_comfort) {
+            // Переход на страницу настроек удобства
+            startActivity(new Intent(this, ComfortSettingsActivity.class));
+            finish();
+        }
+        drawerLayout.closeDrawer(GravityCompat.END);
+        return true;
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
+            drawerLayout.closeDrawer(GravityCompat.END);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     private OkHttpClient getUnsafeOkHttpClient() {
@@ -242,21 +292,6 @@ public class HistoryActivity extends AppCompatActivity {
                 response.close();
             }
         });
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(android.view.MenuItem item) {
-        if (item.getItemId() == R.id.action_menu) {
-            drawerLayout.openDrawer(GravityCompat.END);
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_menu, menu);
-        return true;
     }
 
     @Override

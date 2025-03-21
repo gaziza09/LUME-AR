@@ -18,11 +18,15 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import okio.ByteString;
 import android.widget.TextView;
+import org.json.JSONObject;
+import androidx.annotation.NonNull;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
 
     private TextView textView;
+    private TextView naturalSoundsTextView;
     private WebSocket webSocket;
+    private WebSocket naturalSoundsWebSocket;
     private DrawerLayout drawerLayout;
 
     @Override
@@ -31,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         textView = findViewById(R.id.textView);
+        naturalSoundsTextView = findViewById(R.id.naturalSoundsTextView);
         drawerLayout = findViewById(R.id.drawer_layout);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -38,17 +43,10 @@ public class MainActivity extends AppCompatActivity {
         getSupportActionBar().setTitle(""); // Убираем заголовок
 
         NavigationView navigationView = findViewById(R.id.nav_view);
-        navigationView.setNavigationItemSelectedListener(item -> {
-            if (item.getItemId() == R.id.nav_history) {
-                // Открываем экран истории
-                Intent intent = new Intent(MainActivity.this, HistoryActivity.class);
-                startActivity(intent);
-            }
-            drawerLayout.closeDrawers();
-            return true;
-        });
+        navigationView.setNavigationItemSelectedListener(this);
 
         connectWebSocket();
+        connectNaturalSoundsWebSocket();
     }
 
     @Override
@@ -68,6 +66,28 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.nav_home) {
+            // Уже на главной странице
+        } else if (id == R.id.nav_history) {
+            // Переход на страницу истории
+            startActivity(new Intent(this, HistoryActivity.class));
+            finish();
+        } else if (id == R.id.nav_health) {
+            // Переход на страницу мониторинга здоровья
+            startActivity(new Intent(this, HealthMonitorActivity.class));
+            finish();
+        } else if (id == R.id.nav_comfort) {
+            // Переход на страницу настроек удобства
+            startActivity(new Intent(this, ComfortSettingsActivity.class));
+            finish();
+        }
+        drawerLayout.closeDrawer(GravityCompat.END);
+        return true;
+    }
+
     private OkHttpClient getUnsafeOkHttpClient() {
         try {
             final TrustManager[] trustAllCerts = new TrustManager[]{
@@ -77,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
                         @Override
-                        public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[]{}; }
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
                     }
             };
             final SSLContext sslContext = SSLContext.getInstance("SSL");
@@ -107,7 +127,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onMessage(WebSocket webSocket, String text) {
-                runOnUiThread(() -> textView.setText(text));
+                runOnUiThread(() -> {
+                    try {
+                        JSONObject json = new JSONObject(text);
+                        String messageText = json.getString("text");
+                        textView.setText(messageText);
+                    } catch (Exception e) {
+                        textView.setText(text);
+                    }
+                });
             }
 
             @Override
@@ -127,11 +155,51 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void connectNaturalSoundsWebSocket() {
+        OkHttpClient client = getUnsafeOkHttpClient();
+        Request request = new Request.Builder()
+                .url("wss://easywork.kz/natural_sounds")
+                .build();
+
+        naturalSoundsWebSocket = client.newWebSocket(request, new WebSocketListener() {
+            @Override
+            public void onOpen(WebSocket webSocket, okhttp3.Response response) {
+                runOnUiThread(() -> naturalSoundsTextView.setText("Подключено к серверу оповещений!"));
+            }
+
+            @Override
+            public void onMessage(WebSocket webSocket, String text) {
+                runOnUiThread(() -> {
+                    try {
+                        JSONObject json = new JSONObject(text);
+                        String messageText = json.getString("sound");
+                        naturalSoundsTextView.setText(messageText);
+                    } catch (Exception e) {
+                        naturalSoundsTextView.setText(text);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, okhttp3.Response response) {
+                runOnUiThread(() -> naturalSoundsTextView.setText("Ошибка подключения: " + t.getMessage()));
+            }
+
+            @Override
+            public void onClosed(WebSocket webSocket, int code, String reason) {
+                runOnUiThread(() -> naturalSoundsTextView.setText("Соединение закрыто: " + reason));
+            }
+        });
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (webSocket != null) {
             webSocket.close(1000, "Activity destroyed");
+        }
+        if (naturalSoundsWebSocket != null) {
+            naturalSoundsWebSocket.close(1000, "Activity destroyed");
         }
     }
 }
