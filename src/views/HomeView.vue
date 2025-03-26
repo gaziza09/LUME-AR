@@ -18,7 +18,7 @@
     </div>
 
     <!-- Основной интерфейс -->
-    <div v-if="languageSelected" class="main-content">
+    <div v-if="languageSelected" class="main-content" >
       <!-- Интерфейс записи -->
       <div class="recording-section card animate__animated animate__fadeIn">
         <div class="button-group">
@@ -29,6 +29,7 @@
           <button @click="changeLanguage" class="btn secondary animate__animated animate__bounceIn">Сменить
             язык</button>
           <button @click="goToAbout" class="btn secondary animate__animated animate__bounceIn">Nature sounds</button>
+          <button @click="goToSos" class="btn secondary animate__animated animate__bounceIn">SOS Monitor</button>
         </div>
         <p v-if="result" class="result-text animate__animated animate__fadeInUp"><strong>Распознанный текст:</strong> {{
           result }}</p>
@@ -109,6 +110,10 @@ export default {
 
     goToAbout() {
       this.$router.push("/about");
+    },
+
+    goToSos() {
+      this.$router.push("/sos");
     },
 
     async requestPermission() {
