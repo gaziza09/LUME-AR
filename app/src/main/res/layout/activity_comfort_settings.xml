@@ -60,51 +60,25 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:text="Яркость"
+                        android:text="Настройки яркости"
                         android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="16dp" />
 
                     <SeekBar
                         android:id="@+id/brightnessSeekBar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:max="100"
-                        android:progress="50" />
+                        android:max="255"
+                        android:progress="128" />
 
                     <TextView
                         android:id="@+id/brightnessValueTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Яркость: 50%"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="Контраст"
-                        android:textColor="@color/text_primary"
-                        android:textSize="16sp" />
-
-                    <SeekBar
-                        android:id="@+id/contrastSeekBar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:max="100"
-                        android:progress="50" />
-
-                    <TextView
-                        android:id="@+id/contrastValueTextView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="Контраст: 50%"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp" />
+                        android:text="Яркость: 50%" />
 
                 </LinearLayout>
 

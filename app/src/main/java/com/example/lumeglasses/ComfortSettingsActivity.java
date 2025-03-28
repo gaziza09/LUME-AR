@@ -14,19 +14,26 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.navigation.NavigationView;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.util.Log;
 
 public class ComfortSettingsActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private DrawerLayout drawerLayout;
-    private SeekBar brightnessSeekBar, contrastSeekBar;
-    private TextView brightnessValueTextView, contrastValueTextView;
+    private SeekBar brightnessSeekBar;
+    private TextView brightnessValueTextView;
     private WindowManager.LayoutParams layoutParams;
     private MaterialButton emergencyButton;
     private long lastEmergencyPress = 0;
     private static final long EMERGENCY_PRESS_INTERVAL = 3000; // 3 секунды между нажатиями
+    private LocationService locationService;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,10 +49,21 @@ public class ComfortSettingsActivity extends AppCompatActivity implements Naviga
         navigationView.setNavigationItemSelectedListener(this);
 
         brightnessSeekBar = findViewById(R.id.brightnessSeekBar);
-        contrastSeekBar = findViewById(R.id.contrastSeekBar);
         brightnessValueTextView = findViewById(R.id.brightnessValueTextView);
-        contrastValueTextView = findViewById(R.id.contrastValueTextView);
         emergencyButton = findViewById(R.id.emergencyButton);
+
+        // Инициализация сервиса геолокации
+        locationService = new LocationService(this);
+        
+        // Проверяем разрешение на геолокацию и запускаем обновления
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            locationService.startLocationUpdates();
+        } else {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        }
 
         // Получаем текущие параметры окна
         layoutParams = getWindow().getAttributes();
@@ -72,25 +90,6 @@ public class ComfortSettingsActivity extends AppCompatActivity implements Naviga
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
-        contrastSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser) {
-                    setContrast(progress);
-                    contrastValueTextView.setText(String.format("Контраст: %d%%", progress));
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        // Установка начальных значений
-        contrastSeekBar.setProgress(50);
-
         // Настройка кнопки экстренной помощи
         emergencyButton.setOnClickListener(v -> handleEmergencyButtonPress());
     }
@@ -102,7 +101,9 @@ public class ComfortSettingsActivity extends AppCompatActivity implements Naviga
             new AlertDialog.Builder(this)
                 .setTitle("Вызов экстренной помощи")
                 .setMessage("Вы уверены, что хотите вызвать экстренную помощь?")
-                .setPositiveButton("Да", (dialog, which) -> callEmergency())
+                .setPositiveButton("Да", (dialog, which) -> {
+                    checkLocationPermissionAndCall();
+                })
                 .setNegativeButton("Нет", null)
                 .show();
         } else {
@@ -112,14 +113,48 @@ public class ComfortSettingsActivity extends AppCompatActivity implements Naviga
         }
     }
 
+    private void checkLocationPermissionAndCall() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            callEmergency();
+        }
+    }
+
     private void callEmergency() {
-        // Звоним в экстренную службу
-        Intent intent = new Intent(Intent.ACTION_DIAL);
-        intent.setData(Uri.parse("tel:112")); // Номер экстренной службы
-        startActivity(intent);
+        Log.d("ComfortSettings", "Starting emergency call process");
         
-        // Отправляем SMS с геолокацией (если есть разрешение)
-        // TODO: Добавить отправку SMS с геолокацией
+        // Отправляем SOS-запрос с текущими координатами
+        locationService.sendSOSRequest();
+        Log.d("ComfortSettings", "SOS request sent");
+        
+        // Показываем уведомление пользователю
+        Toast.makeText(this, "SOS-сигнал отправлен", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                         @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                callEmergency();
+            } else {
+                Toast.makeText(this, "Для работы экстренной помощи необходим доступ к геолокации",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (locationService != null) {
+            locationService.stopLocationUpdates();
+        }
     }
 
     private int getCurrentBrightness() {
@@ -138,13 +173,6 @@ public class ComfortSettingsActivity extends AppCompatActivity implements Naviga
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    private void setContrast(int contrast) {
-        // Здесь будет код для установки контрастности
-        // В Android нет прямого API для управления контрастностью экрана
-        // Это можно реализовать через наложение полупрозрачного слоя или
-        // через системные настройки доступности
     }
 
     @Override
@@ -170,9 +198,6 @@ public class ComfortSettingsActivity extends AppCompatActivity implements Naviga
             finish();
         } else if (id == R.id.nav_history) {
             startActivity(new Intent(this, HistoryActivity.class));
-            finish();
-        } else if (id == R.id.nav_health) {
-            startActivity(new Intent(this, HealthMonitorActivity.class));
             finish();
         } else if (id == R.id.nav_comfort) {
             // Уже на странице настроек удобства

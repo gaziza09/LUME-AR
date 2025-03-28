@@ -133,17 +133,11 @@ public class HistoryActivity extends AppCompatActivity implements NavigationView
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.nav_home) {
-            // Переход на главную страницу
             startActivity(new Intent(this, MainActivity.class));
             finish();
         } else if (id == R.id.nav_history) {
             // Уже на странице истории
-        } else if (id == R.id.nav_health) {
-            // Переход на страницу мониторинга здоровья
-            startActivity(new Intent(this, HealthMonitorActivity.class));
-            finish();
         } else if (id == R.id.nav_comfort) {
-            // Переход на страницу настроек удобства
             startActivity(new Intent(this, ComfortSettingsActivity.class));
             finish();
         }

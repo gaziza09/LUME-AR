@@ -72,15 +72,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (id == R.id.nav_home) {
             // Уже на главной странице
         } else if (id == R.id.nav_history) {
-            // Переход на страницу истории
             startActivity(new Intent(this, HistoryActivity.class));
             finish();
-        } else if (id == R.id.nav_health) {
-            // Переход на страницу мониторинга здоровья
-            startActivity(new Intent(this, HealthMonitorActivity.class));
-            finish();
         } else if (id == R.id.nav_comfort) {
-            // Переход на страницу настроек удобства
             startActivity(new Intent(this, ComfortSettingsActivity.class));
             finish();
         }
